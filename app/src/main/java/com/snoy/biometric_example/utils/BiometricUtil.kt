@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import androidx.annotation.IntDef
 import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
+import androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -24,23 +26,34 @@ object BiometricUtil {
     private fun hasBiometricCapability(
         context: Context,
         @AuthenticationStatus authenticators: Int
-    ): Int {
+    ): BiometricReadyStatus {
         val biometricManager = BiometricManager.from(context)
-        return biometricManager.canAuthenticate(authenticators)
+        val retValue = biometricManager.canAuthenticate(authenticators)
+        val msg = when (retValue) {
+            BIOMETRIC_SUCCESS -> "You can successfully authenticate."
+            BIOMETRIC_ERROR_NONE_ENROLLED -> "You can't authenticate because no biometric or device credential is enrolled."
+            else -> "BIOMETRIC ERROR value = $retValue"
+        }
+
+        return if (retValue != BIOMETRIC_SUCCESS) {
+            Log.d("RDTest", msg)
+            BiometricReadyStatus.BiometricNotReady(retValue, msg)
+        } else {
+            BiometricReadyStatus.BiometricReady
+        }
+
     }
 
-    @Suppress("unused")
-    fun isBiometricReady(context: Context) =
-        hasBiometricCapability(
-            context,
-            BiometricManager.Authenticators.BIOMETRIC_WEAK
-        ) == BiometricManager.BIOMETRIC_SUCCESS
+    fun isBiometricReady(context: Context) = hasBiometricCapability(
+        context,
+        BiometricManager.Authenticators.BIOMETRIC_WEAK
+    )
 
     fun isBiometricStrongReady(context: Context) =
         hasBiometricCapability(
             context,
             BiometricManager.Authenticators.BIOMETRIC_STRONG
-        ) == BiometricManager.BIOMETRIC_SUCCESS
+        )
 
     private fun setBiometricPromptInfo(
         title: String,
@@ -108,8 +121,8 @@ object BiometricUtil {
         title: String = "Biometric Authentication",
         subtitle: String = "Enter biometric credentials to proceed.",
         description: String = "Input your Fingerprint or FaceID to ensure it's you!",
-        negativeButton: String = "Cancel",
         activity: FragmentActivity,
+        negativeButton: String = activity.getString(android.R.string.cancel),
         listener: BiometricAuthListener,
         cryptoObject: BiometricPrompt.CryptoObject? = null,
         allowDeviceCredential: Boolean = false,
@@ -130,8 +143,11 @@ object BiometricUtil {
 
         // 3
         biometricPrompt.apply {
-            if (cryptoObject == null) authenticate(promptInfo)
-            else authenticate(promptInfo, cryptoObject)
+            if (cryptoObject == null || !useStrongAuth) {
+                authenticate(promptInfo)
+            } else {
+                authenticate(promptInfo, cryptoObject)
+            }
         }
     }
 
@@ -140,4 +156,9 @@ object BiometricUtil {
 interface BiometricAuthListener {
     fun onBiometricAuthenticationError(errorCode: Int, errString: String)
     fun onBiometricAuthenticationSuccess(result: BiometricPrompt.AuthenticationResult)
+}
+
+sealed interface BiometricReadyStatus {
+    object BiometricReady : BiometricReadyStatus
+    data class BiometricNotReady(val code: Int, val msg: String) : BiometricReadyStatus
 }
