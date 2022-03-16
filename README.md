@@ -3,7 +3,7 @@
 An Android example App that shows how to use BiometricPrompt.<br/>
 There are three options:
 
- - Need encryption: If checked, the user should first biometric reg with an input msg. One the encryption reg msg saved, the user can biometric auth.
+ - Need encryption: If checked, the user should first biometric reg with an input msg. Once the encryption reg msg saved, the user can biometric auth.
  - Need strong auth: If checked, the user could only use BIOMETRIC_STRONG (Class 3) authenticators. Almost like restrict the user to fingerprint only. Pixel4 and Pixel4 XL are the only devices, that have Class3 face authentication.
  - Allow device credential: If checked, when biometric auth fail, it fallback to device's non-biometric credential, such as pattern, pin, password.
 
